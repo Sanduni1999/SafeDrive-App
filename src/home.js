@@ -132,7 +132,7 @@ const AccidentPronePage = () => {
             },
           ]}
         >
-          <Input placeholder="Enter the destination location" />
+          <Input placeholder="Enter the destination" />
         </Form.Item>
 
         <Form.Item>
