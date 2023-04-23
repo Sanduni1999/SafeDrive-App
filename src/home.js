@@ -1,14 +1,24 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Form, Input, Button, DatePicker, Typography } from "antd";
 import {
   GoogleMap,
   LoadScript,
   DirectionsService,
   DirectionsRenderer,
+  Autocomplete,
+  useJsApiLoader,
+  Marker,
 } from "@react-google-maps/api";
-import dayjs from 'dayjs';
-import customParseFormat from 'dayjs/plugin/customParseFormat';
-
+import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+import SkeletonButton from "antd/es/skeleton/Button";
+import PlacesAutocomplete from 'react-places-autocomplete';
+import {
+  geocodeByAddress,
+  geocodeByPlaceId,
+  getLatLng,
+} from 'react-places-autocomplete';
+import LocationSearchInput from "./components/locationinput";
 
 const { Title } = Typography;
 dayjs.extend(customParseFormat);
@@ -27,63 +37,60 @@ const center = {
 const GoogleMaps = ({ origin, destination }) => {
   const [directions, setDirections] = useState(null);
 
-  const directionsCallback = (result) => {
-    if (result !== null) {
-      setDirections(result);
-    }
-  };
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: "AIzaSyCogGxOqTC9CsAAC3nyRL9Up9hgfS4yyR0",
+    libraries: ["places"],
+  });
+
+  if (!isLoaded) {
+    return <SkeletonButton />;
+  }
 
   return (
-    <LoadScript googleMapsApiKey="AIzaSyCogGxOqTC9CsAAC3nyRL9Up9hgfS4yyR0">
-      <GoogleMap
-        key={"AIzaSyCogGxOqTC9CsAAC3nyRL9Up9hgfS4yyR0"}
-        mapContainerStyle={containerStyle}
-        center={center}
-        zoom={15}
-      >
+      <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={15}>
         {origin && destination && (
           <DirectionsService
             options={{
-              destination: destination,
-              origin: origin,
+              destination,
+              origin,
               travelMode: "DRIVING",
             }}
-            callback={directionsCallback}
-          />
-        )}
-
-        {directions && (
-          <DirectionsRenderer
-            options={{
-              directions: directions,
+            callback={(result, status) => {
+              if (status === "OK") {
+                setDirections(result);
+              }
             }}
           />
         )}
+        {directions && <DirectionsRenderer options={{ directions }} />}
       </GoogleMap>
-    </LoadScript>
   );
 };
+
 
 const AccidentPronePage = () => {
   const [form] = Form.useForm();
   const [origin, setOrigin] = useState(null);
   const [destination, setDestination] = useState(null);
 
-  // const disabledDate: RangePickerProps['disabledDate'] = (current) => {
-  //   // Can not select days before today and today
-  //   return current && current < dayjs().endOf('day');
-  // };
-  
-  // const disabledDateTime = () => ({
-  //   disabledHours: () => range(0, 24).splice(4, 20),
-  //   disabledMinutes: () => range(30, 60),
-  //   disabledSeconds: () => [55, 56],
-  // });
-
   const onFinish = (values) => {
     console.log("Received values of form: ", values);
     setOrigin(values.origin);
     setDestination(values.destination);
+  };
+
+  this.state = { address: '' };
+
+  function handleChange(address) {
+    this.setState({ address });
+  };
+
+  function handleSelect(address) {
+    this.setState({ address });
+    geocodeByAddress(address)
+      .then(results => getLatLng(results[0]))
+      .then(latLng => console.log('Success', latLng))
+      .catch(error => console.error('Error', error));
   };
 
   return (
@@ -103,23 +110,53 @@ const AccidentPronePage = () => {
         >
           <DatePicker
             format="YYYY-MM-DD HH:mm:ss"
-            // disabledDate={disabledDate}
-            // disabledTime={disabledDateTime}
             showTime={{ defaultValue: dayjs("00:00:00", "HH:mm:ss") }}
           />
         </Form.Item>
 
         <Form.Item
-          name="origin"
+          name="address"
           label="Origin Location"
-          rules={[
-            {
-              required: true,
-              message: "Please input the origin location!",
-            },
-          ]}
         >
-          <Input placeholder="Enter the origin location" />
+          
+      <PlacesAutocomplete
+        value={this.state.address}
+        onChange={this.handleChange}
+        onSelect={this.handleSelect}
+      >
+        {({ getInputProps, suggestions, getSuggestionItemProps, loading }) => (
+          <div>
+            <input
+              {...getInputProps({
+                placeholder: 'Search Places ...',
+                className: 'location-search-input',
+              })}
+            />
+            <div className="autocomplete-dropdown-container">
+              {loading && <div>Loading...</div>}
+              {suggestions.map(suggestion => {
+                const className = suggestion.active
+                  ? 'suggestion-item--active'
+                  : 'suggestion-item';
+                // inline style for demonstration purpose
+                const style = suggestion.active
+                  ? { backgroundColor: '#fafafa', cursor: 'pointer' }
+                  : { backgroundColor: '#ffffff', cursor: 'pointer' };
+                return (
+                  <div
+                    {...getSuggestionItemProps(suggestion, {
+                      className,
+                      style,
+                    })}
+                  >
+                    <span>{suggestion.description}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </PlacesAutocomplete>
         </Form.Item>
 
         <Form.Item
@@ -132,7 +169,9 @@ const AccidentPronePage = () => {
             },
           ]}
         >
+          {/* <Autocomplete> */}
           <Input placeholder="Enter the destination" />
+          {/* </Autocomplete> */}
         </Form.Item>
 
         <Form.Item>
