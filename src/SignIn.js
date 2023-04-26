@@ -4,6 +4,7 @@ import logo from "./assets/logo.png";
 import SignUp from "./SignUp";
 import { useNavigate } from "react-router-dom";
 import PageRoutes from "./constants/page_routes";
+import axios from "axios";
 
 const { Title } = Typography;
 
@@ -17,12 +18,27 @@ const SignIn = () => {
   const navigate = useNavigate();
 
   const abc = () => {
-    fetch("hello").then((res) =>
-            res.json().then((data) => {
-                // Setting a data from api
-               console.log(data);
-            })
-        );
+    const json = {
+      Lat: 10.00,
+      Long: 50.0,
+      Day: 1,
+      Time: 11.00,
+      Weather: 1,
+      Light: 2,
+      Sex: 1,
+      Age: 40,
+      Vehicle_type: 1,
+      Vehicle_age: 1
+  }
+    axios.post("http://127.0.0.1:5000/predict", json)
+    .then((res) => {console.log(res)})
+    
+    // fetch("https://127.0.0.1:5000/predict", {body: {name: "TEST"}, method:"POST"}).then((res) =>
+    //   res.json().then((data) => {
+    //     // Setting a data from api
+    //     console.log(data);
+    //   })
+    
 
     // fetch({ url: "http://127.0.0.1:5000/hello", method: "GET" })
     //   .then((val) => {

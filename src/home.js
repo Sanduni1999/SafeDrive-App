@@ -1,24 +1,15 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Form, Input, Button, DatePicker, Typography } from "antd";
+import { Form, Input, Button, DatePicker, Typography, AutoComplete } from "antd";
 import {
   GoogleMap,
-  LoadScript,
   DirectionsService,
   DirectionsRenderer,
-  Autocomplete,
   useJsApiLoader,
   Marker,
 } from "@react-google-maps/api";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import SkeletonButton from "antd/es/skeleton/Button";
-import PlacesAutocomplete from 'react-places-autocomplete';
-import {
-  geocodeByAddress,
-  geocodeByPlaceId,
-  getLatLng,
-} from 'react-places-autocomplete';
-import LocationSearchInput from "./components/locationinput";
 
 const { Title } = Typography;
 dayjs.extend(customParseFormat);
@@ -46,6 +37,12 @@ const GoogleMaps = ({ origin, destination }) => {
     return <SkeletonButton />;
   }
 
+  const onDirectionsCallback = (result, status) => {
+    if (status === "OK") {
+      setDirections(result);
+    }
+  };
+
   return (
       <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={15}>
         {origin && destination && (
@@ -72,26 +69,53 @@ const AccidentPronePage = () => {
   const [form] = Form.useForm();
   const [origin, setOrigin] = useState(null);
   const [destination, setDestination] = useState(null);
+  const [originFinal, setOriginFinal] = useState(null);
+  const [destinationFinal, setDestinationFinal] = useState(null);
+  
+  const [directionsRequest, setDirectionsRequest] = useState(null);
+
 
   const onFinish = (values) => {
     console.log("Received values of form: ", values);
-    setOrigin(values.origin);
-    setDestination(values.destination);
+    setOriginFinal(values.origin);
+    setDestinationFinal(values.destination);
   };
 
-  this.state = { address: '' };
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: "AIzaSyCogGxOqTC9CsAAC3nyRL9Up9hgfS4yyR0",
+    libraries: ["places"],
+  });
 
-  function handleChange(address) {
-    this.setState({ address });
+  const autocompleteService = isLoaded ? new window.google.maps.places.AutocompleteService() : null;
+
+  const [options, setOptions] = useState([]);
+
+  const onSearch = (searchText) => {
+    if (autocompleteService) {
+      autocompleteService.getPlacePredictions({ input: searchText }, (results, status) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+          const newOptions = results.map((result) => ({
+            value: result.description,
+          }));
+          setOptions(newOptions);
+        } else {
+          setOptions([]);
+        }
+      });
+    }
   };
 
-  function handleSelect(address) {
-    this.setState({ address });
-    geocodeByAddress(address)
-      .then(results => getLatLng(results[0]))
-      .then(latLng => console.log('Success', latLng))
-      .catch(error => console.error('Error', error));
+  const onChangeOrigin = (data) => {
+    setOrigin(data);
   };
+
+  const onChangeDestination = (data) => {
+    setOrigin(data);
+  };
+
+  // useEffect(() => {
+  //   // No need to return anything here
+  // }, [originFinal, destinationFinal])
 
   return (
     <div style={{ padding: "32px" }}>
@@ -109,54 +133,28 @@ const AccidentPronePage = () => {
           ]}
         >
           <DatePicker
-            format="YYYY-MM-DD HH:mm:ss"
-            showTime={{ defaultValue: dayjs("00:00:00", "HH:mm:ss") }}
+            format="YYYY-MM-DD HH:mm"
+            showTime={{ defaultValue: dayjs("00:00", "HH:mm") }}
           />
         </Form.Item>
 
         <Form.Item
-          name="address"
+          name="origin"
           label="Origin Location"
+          rules={[
+            {
+              required: true,
+              message: "Please input the destination location!",
+            },
+          ]}
         >
-          
-      <PlacesAutocomplete
-        value={this.state.address}
-        onChange={this.handleChange}
-        onSelect={this.handleSelect}
-      >
-        {({ getInputProps, suggestions, getSuggestionItemProps, loading }) => (
-          <div>
-            <input
-              {...getInputProps({
-                placeholder: 'Search Places ...',
-                className: 'location-search-input',
-              })}
-            />
-            <div className="autocomplete-dropdown-container">
-              {loading && <div>Loading...</div>}
-              {suggestions.map(suggestion => {
-                const className = suggestion.active
-                  ? 'suggestion-item--active'
-                  : 'suggestion-item';
-                // inline style for demonstration purpose
-                const style = suggestion.active
-                  ? { backgroundColor: '#fafafa', cursor: 'pointer' }
-                  : { backgroundColor: '#ffffff', cursor: 'pointer' };
-                return (
-                  <div
-                    {...getSuggestionItemProps(suggestion, {
-                      className,
-                      style,
-                    })}
-                  >
-                    <span>{suggestion.description}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </PlacesAutocomplete>
+          <AutoComplete
+            value={origin}
+            options={options}
+            onSearch={onSearch}
+            onChange={onChangeOrigin}
+            placeholder="Enter the origin"
+          />
         </Form.Item>
 
         <Form.Item
@@ -169,9 +167,13 @@ const AccidentPronePage = () => {
             },
           ]}
         >
-          {/* <Autocomplete> */}
-          <Input placeholder="Enter the destination" />
-          {/* </Autocomplete> */}
+          <AutoComplete
+            value={destination}
+            options={options}
+            onSearch={onSearch}
+            onChange={onChangeDestination}
+            placeholder="Enter the destination"
+          />
         </Form.Item>
 
         <Form.Item>
@@ -181,7 +183,10 @@ const AccidentPronePage = () => {
         </Form.Item>
       </Form>
 
-      <GoogleMaps origin={origin} destination={destination} />
+      <GoogleMaps origin={originFinal} destination={destinationFinal} />
+      {/* {originFinal && destinationFinal && (
+        <GoogleMaps origin={originFinal} destination={destinationFinal} />
+      )} */}
     </div>
   );
 };
