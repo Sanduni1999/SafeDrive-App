@@ -35,6 +35,7 @@ const SignIn = () => {
       // Signed in 
       const user = userCredential.user;
       global.user = user
+      localStorage.setItem("user",JSON.stringify(user))
       console.log(user.uid)
       userData(user.uid)
       // navigate(PageRoutes.HOME);
@@ -55,6 +56,9 @@ const SignIn = () => {
         if (doc.id == uid) {
           console.log(doc.data());
           global.userData = doc.data();
+          var firestoreData = doc.data()
+          firestoreData.dob = doc.data().dateOfBirth.toDate()
+          localStorage.setItem("userData", JSON.stringify(firestoreData))
           console.log(new Date(doc.data().dateOfBirth.toDate()).getFullYear())
           navigate(PageRoutes.HOME);
         }

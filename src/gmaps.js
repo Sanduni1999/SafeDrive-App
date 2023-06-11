@@ -35,16 +35,40 @@ const center = {
 };
 
 var wayPoints = [];
+var isCallbackExecuted = false
+var previousRequest = {
+  origin: null,
+  destination: null,
+  datetime: null
+}
 
-const GoogleMaps = ({ origin, destination, successCallback, queryDt }) => {
+const GoogleMaps = ({ origin, destination, successCallback, queryDt, datetime }) => {
   const [directions, setDirections] = useState(null);
   const [markers, setMarkers] = useState([]);
   let count = React.useRef(0);
   let count1 = React.useRef(0);
 
+  useEffect(() => {
+    if(previousRequest.origin !== origin){
+      previousRequest.origin = origin
+      isCallbackExecuted = false
+    }
+
+    if(previousRequest.destination !== destination){
+      previousRequest.destination = destination
+      isCallbackExecuted = false
+    }
+
+    if(previousRequest.datetime !== datetime){
+      previousRequest.datetime = datetime
+      isCallbackExecuted = false
+    }
+  },[origin, destination, datetime])
+
   const directionsCallback = (result, status) => {
     console.log(result);
     wayPoints = [];
+    if(!isCallbackExecuted){
     if (result !== null && count.current < 1) {
       count.current += 1;
       console.log("****" + status + " " + Object.keys(result).includes("routes"))
@@ -57,17 +81,25 @@ const GoogleMaps = ({ origin, destination, successCallback, queryDt }) => {
         ) {
        
           result.routes[0]["overview_path"].forEach((element) => {
+            var localStorafeData = localStorage.getItem("userData")
+            if(localStorafeData != null){
+              localStorafeData = JSON.parse(localStorafeData)
+              console.log("LOCAL " + localStorafeData)
+            }
+
+            var selectedDt = new Date(queryDt().ms).getHours()
+
             const json = {
               Lat: element.lat(),
               Long: element.lng(),
               Day: queryDt().day,
               Time: queryDt().time,
               Weather: 1,
-              Light: 1,
-              Sex: global.userData.sex,
-              Age: (new Date().getFullYear() - new Date(global.userData.dateOfBirth.toDate()).getFullYear()),
-              Vehicle_type: global.userData.vehicleType,
-              Vehicle_age: (new Date().getFullYear() - global.userData.yearOfManufacture),
+              Light: (selectedDt >= 6 && selectedDt < 18 ? 1 : 2),
+              Sex: localStorafeData.sex,
+              Age: (new Date().getFullYear() - new Date(localStorafeData.dob).getFullYear()),
+              Vehicle_type: localStorafeData.vehicleType,
+              Vehicle_age: (new Date().getFullYear() - localStorafeData.yearOfManufacture),
             };
             console.log(json)
             wayPoints.push(json);
@@ -82,7 +114,10 @@ const GoogleMaps = ({ origin, destination, successCallback, queryDt }) => {
 
     if(wayPoints.length > 0){
       predWeather(wayPoints)
+      // getPreditions(wayPoints)
     }
+    isCallbackExecuted = true
+  }
   };
 
   const predWeather = (wayPoints) => {
@@ -98,7 +133,7 @@ const GoogleMaps = ({ origin, destination, successCallback, queryDt }) => {
         var weather = null
         console.log(ms)
         for(var i =1; i < result.list.length; i++){
-          console.log(result.list[i-1].dt)
+          console.log(result.list[i-1].dt + " d-1: " + parseInt(result.list[i-1].dt+"000") + " " + parseInt(result.list[i].dt+"000"))
           if(ms >= parseInt(result.list[i-1].dt+"000") && ms <= parseInt(result.list[i].dt+"000")){
             if(ms - parseInt(result.list[i-1].dt+"000") < parseInt(result.list[i].dt - ms+"000")){
               currentWeather = result.list[i-1].weather[0].main
@@ -136,14 +171,15 @@ const GoogleMaps = ({ origin, destination, successCallback, queryDt }) => {
   const getPreditions = (wayPoints) => {
     count1.current = 0
     axios
-    .post("http://127.0.0.1:5000/predict", { wp: wayPoints })
+    // .post("http://127.0.0.1:5000/predict", { wp: wayPoints })
+    .post("https://sandunibagi.pythonanywhere.com/predict", { wp: wayPoints })
     .then((res) => {
       console.log(res);
       if (Object.keys(res.data).includes("result")) {
         var arr = [];
 
         res.data.result.forEach((e) => {
-          if (e.pred != 5) {
+          if (e.pred != 0) {
             e.color = "blue";
             arr.push(e);
           }

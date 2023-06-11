@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Form, Input, Button, DatePicker, Typography, AutoComplete } from "antd";
 import {
+  LogoutOutlined
+} from '@ant-design/icons';
+import {
   GoogleMap,
   DirectionsService,
   DirectionsRenderer,
@@ -14,6 +17,8 @@ import SkeletonButton from "antd/es/skeleton/Button";
 import GoogleMaps from './gmaps.js'
 import axios from "axios";
 import moment from "moment/moment.js";
+import { useNavigate, useNavigation } from "react-router-dom";
+import PageRoutes from "./constants/page_routes.js";
 
 const { Title } = Typography;
 dayjs.extend(customParseFormat);
@@ -38,6 +43,7 @@ const AccidentPronePage = () => {
   const [form] = Form.useForm();
   const [origin, setOrigin] = useState(null);
   const [destination, setDestination] = useState(null);
+  const [dtTime, setDtTime] = useState(null);
   const [originFinal, setOriginFinal] = useState(null);
   const [destinationFinal, setDestinationFinal] = useState(null);
   
@@ -46,7 +52,7 @@ const AccidentPronePage = () => {
 
   const onFinish = (values) => {
     console.log("Received values of form: ", values);
-    
+    setDtTime(values.datetime)
     setOriginFinal(values.origin);
     setDestinationFinal(values.destination);
   };
@@ -93,8 +99,17 @@ const AccidentPronePage = () => {
     return datetime
   }
 
+  const navigate = useNavigate()
+
+  // const navigation = useNavigation()
   return (
     <div style={{ padding: "32px" }}>
+      <div style={{position:"absolute", top:40, right:40}}>
+      <LogoutOutlined style={{fontSize:25}} onClick={() => {
+          localStorage.clear()
+          navigate(PageRoutes.SIGN_IN)
+      }}/>
+      </div>
       <Title level={4}>Enter trip details</Title>
 
       <Form form={form} onFinish={onFinish} layout="vertical">
@@ -110,7 +125,7 @@ const AccidentPronePage = () => {
         >
           <DatePicker
             format="YYYY-MM-DD HH:mm"
-            disabledDate={(current) => current.isBefore(moment().subtract(1,"day"))}
+            // disabledDate={(current) => current.isBefore(moment().subtract(1,"day"))}
             showTime={{ defaultValue: dayjs("00:00", "HH:mm") }}
             onChange={(date, dateString) => {
               datetime.day = date.day() === 0 ? 7 : date.day()
@@ -167,7 +182,7 @@ const AccidentPronePage = () => {
         </Form.Item>
       </Form>
 
-      <GoogleMaps origin={originFinal} destination={destinationFinal} queryDt = {getDatetime}/>
+      <GoogleMaps origin={originFinal} destination={destinationFinal} queryDt = {getDatetime} datetime={dtTime}/>
     </div>
   );
 };
